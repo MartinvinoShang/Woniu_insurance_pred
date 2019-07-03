@@ -424,3 +424,4 @@ mlp(X_train2, X_test2, y_train2, y_test2)
 #forest(X_train2, X_test2, y_train2, y_test2,126)
 xgboost(X_train2, X_test2, y_train2, y_test2)
 #dataset_x=dataset['角色','子女','年龄','性别','年收入','家庭年收入','工作','主要出行工具是否为私家车(1：是 2：否)','是否赡养父母(1是 2否)','家庭成员是否有社保(1有 2无)','疾病']
+##gittest
