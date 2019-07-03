@@ -26,99 +26,8 @@ import matplotlib.pyplot as plt
 import statsmodels.api as sm
 import matplotlib.pyplot as plt
 import os
-def pre():
-    dataset=pd.read_csv("/Users/shangliufangjian/Documents/工作/蜗牛保险/datas.csv",encoding='gb2312')
-    dataset_y=[]
-    size=len(dataset)
-    kidnum=np.zeros((size,1))
-    haspartner=np.zeros((size,1))
-    parentsnum=np.zeros((size,1))
-    hasillness=np.ones((size,1))
-
-    datasettobedummied=dataset.drop(['生日','智诊时间','子女'],axis=1)
-
-    datasettobedummied=datasettobedummied[['性别(1：男 2：女)','工作','主要出行工具是否为私家车(1：是 2：否)','家庭成员是否经常出差(1：是 2：否)','家庭成员是否有社保(1有 2无)']].fillna('未知')
-    #需要虚拟化的变量
-    dummies=pd.get_dummies(datasettobedummied[['性别(1：男 2：女)','工作','主要出行工具是否为私家车(1：是 2：否)','家庭成员是否经常出差(1：是 2：否)','家庭成员是否有社保(1有 2无)']])
-
-    for i in range(size):
-        if(dataset.iloc[i,1]=='父母'):
-            parentsnum[i]=1
-        elif (dataset.iloc[i,1]=='子女'):
-            kidnum[i]=1
-        elif (dataset.iloc[i,1]=='配偶'):
-            haspartner[i]=1
-        if (dataset.iloc[i, 14] == '无疾病'or pd.isna(dataset.iloc[i, 14])):
-            hasillness[i] = 0
-
-
-    dataset['parentsnum']=parentsnum
-    dataset['haspartner']=haspartner
-    dataset['kidnum']=kidnum
-    dataset['hasillness'] = hasillness
-
-    dataset2 = dataset.groupby(dataset['用户id']).sum()
-    characterdummies = dataset2[['parentsnum', 'haspartner', 'kidnum']]
-
-    data_tobediscretize_age=dataset[['年龄']].fillna(-100)
-    data_tobediscretize_salary=dataset[['年收入']].fillna(0)
-    dis1 = KBinsDiscretizer(n_bins=5, encode='onehot-dense', strategy='quantile')
-    dis2 = KBinsDiscretizer(n_bins=5, encode='onehot-dense', strategy='uniform')
-    data_discretized_age = dis1.fit_transform(data_tobediscretize_age)
-    data_discretized_salary = dis2.fit_transform(data_tobediscretize_salary)
-
-    data_discretized_age=pd.DataFrame(data_discretized_age)
-    data_discretized_salary=pd.DataFrame(data_discretized_salary)
-    data_discretized_age.columns=['年龄1','年龄2','年龄3','年龄4','年龄5']
-    data_discretized_salary.columns = ['年收入1', '年收入2', '年收入3', '年收入4', '年收入5'] #收入单位不统一
-
-
-    #newdataset = pd.concat([dataset[['用户id', '角色','parentsnum','haspartner','kidnum','hasillness']], dummies, data_discretized_age,data_discretized_salary], axis=1)
-    newdataset = pd.concat([dataset[['用户id', '角色', 'hasillness']], dummies], axis=1)
-    #newdataset = pd.concat([newdataset, data_discretized_age,data_discretized_salary],axis=1)
-
-    newdataset.set_index('用户id', inplace=True)
-    newdataset = newdataset.sort_index()
-
-    ##上面的代码主要是简化数据，增加有无相关亲人的dummy
-    newdataset_basic=newdataset[newdataset['角色']=='本人']
-
-
-    newdataset2_basic=pd.concat([newdataset_basic,characterdummies],axis=1,join_axes=[newdataset_basic.index])#存在部分用户ID下没有本人只有其他角色，舍弃
-    newdataset2_advanced = newdataset2_basic#进阶数据
-
-    datasetforx=newdataset2_basic.drop('角色',axis=1)
-
-
-    newdataset2_advanced=pd.pivot_table(newdataset,index=['用户id','角色'])
-
-
-    dataset_x_advanced=newdataset2_advanced.unstack()
-    print(dataset_x_advanced.head(2))
-
-    #dataset3=dataset.groupby([dataset['用户id'],dataset['角色']]).sumbxf9()
-    #下为生成Y
-    for i in dataset['保费']:
-        if(np.isnan(i)):
-            dataset_y.append(0)
-        else:
-            dataset_y.append(1)
-    dataset['买了']=dataset_y
-
-
-    dataset_fory=dataset.groupby(dataset['用户id']).mean()
-    alldata=pd.concat([newdataset2_basic,dataset_fory],axis=1,join_axes=[newdataset2_basic.index])#同样，只保存ID下有本人资料的数据
-    dataset_y=alldata['买了']
-    X_train, X_test, y_train, y_test = train_test_split(datasetforx, dataset_y, test_size=0.2, random_state=0)
-    ros = RandomOverSampler(random_state=0)
-    X_resampled, y_resampled = ros.fit_sample(X_train, y_train)
-    #print(X_test.head(2))
-    #print(y_resampled.value_counts())
-
-    return X_resampled, X_test, y_resampled, y_test
 
 def pre_advanced():
-    os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin/'
     dataset=pd.read_csv("/Users/shangliufangjian/Documents/工作/蜗牛保险/datas.csv",encoding='gb2312')
 
     dataset_y=[]
@@ -152,7 +61,6 @@ def pre_advanced():
         if (dataset.iloc[i, 22] == 0 or pd.isna(dataset.iloc[i, 22])):
             hascarloan[i] = 0
 
-
     dataset['parentsnum']=parentsnum
     dataset['haspartner']=haspartner
     dataset['kidnum']=kidnum
@@ -163,7 +71,19 @@ def pre_advanced():
     #characterdummies = dataset2[['parentsnum', 'haspartner', 'kidnum']]
 
     data_tobediscretize_age=dataset[['年龄']].fillna(-100)
-    data_tobediscretize_salary=dataset[['年收入']].fillna(0)
+    #data_tobediscretize_salary=dataset[['年收入']].fillna(0)
+
+#对年收入异常值的修正
+    dataset['年收入'] = dataset['年收入'].fillna(0)
+    dataset.loc[dataset['年收入'] > 1000, '年收入'] = None
+    data_income = dataset['年收入'].groupby(dataset['工作']).mean()
+    dic = data_income.to_dict()
+    d1 = dataset.loc[dataset['年收入'].isna(), ['年收入', '工作']]
+    for i in range(len(d1)):
+        d1.iloc[i, 0] = dic.get(d1.iloc[i, 1])
+    dataset.loc[dataset['年收入'].isna()] = d1
+
+    data_tobediscretize_salary = dataset[['年收入']]
     dis1 = KBinsDiscretizer(n_bins=5, encode='onehot-dense', strategy='quantile')
     dis2 = KBinsDiscretizer(n_bins=5, encode='onehot-dense', strategy='uniform')
     data_discretized_age = dis1.fit_transform(data_tobediscretize_age)
@@ -176,7 +96,7 @@ def pre_advanced():
 
 
     #newdataset = pd.concat([dataset[['用户id', '角色','parentsnum','haspartner','kidnum','hasillness']], dummies, data_discretized_age,data_discretized_salary], axis=1)
-    newdataset_advanced = pd.concat([dataset[['用户id', '角色', 'hasillness','parentsnum','haspartner','kidnum','hashouseloan','hascarloan']], dummies,data_discretized_age], axis=1)
+    newdataset_advanced = pd.concat([dataset[['用户id', '角色', 'hasillness','parentsnum','haspartner','kidnum','hashouseloan','hascarloan']], dummies,data_discretized_age,data_discretized_salary], axis=1)
     #newdataset = pd.concat([newdataset, data_discretized_age,data_discretized_salary],axis=1)
 
     newdataset_advanced.set_index('用户id', inplace=True)
@@ -312,8 +232,7 @@ def mlp(X_train, X_test, y_train, y_test):
     pred = clf.predict(X_test)
     print('mlp:')
     print(classification_report(y_test, pred))
-X_train1, X_test1, y_train1, y_test1=pre()
-X_train2, X_test2, y_train2, y_test2=pre_advanced()
+
 def tuningtree():
     para=1
     scmax=0
@@ -404,19 +323,23 @@ def xgboost(X_train, X_test, y_train, y_test):
     data_predict = clf.predict(X_test)
 
     print(metrics.classification_report(y_test, data_predict))
-'''
-mytree(X_train1, X_test1, y_train1, y_test1,25)
-mytree(X_train2, X_test2, y_train2, y_test2,25)
-forest(X_train1, X_test1, y_train1, y_test1,126)
-forest(X_train2, X_test2, y_train2, y_test2,126)
-adaboost(X_train1, X_test1, y_train1, y_test1)
-adaboost(X_train2, X_test2, y_train2, y_test2)
-gdc(X_train1, X_test1, y_train1, y_test1)
-gdc(X_train2, X_test2, y_train2, y_test2)
-mlp(X_train1, X_test1, y_train1, y_test1)
-mlp(X_train2, X_test2, y_train2, y_test2)
+
+
+X_train2, X_test2, y_train2, y_test2=pre_advanced()
+
+# mytree(X_train1, X_test1, y_train1, y_test1,25)
+# mytree(X_train2, X_test2, y_train2, y_test2,25)
+# forest(X_train1, X_test1, y_train1, y_test1,126)
+# forest(X_train2, X_test2, y_train2, y_test2,126)
+# adaboost(X_train1, X_test1, y_train1, y_test1)
+# adaboost(X_train2, X_test2, y_train2, y_test2)
+# gdc(X_train1, X_test1, y_train1, y_test1)
+# gdc(X_train2, X_test2, y_train2, y_test2)
+# mlp(X_train1, X_test1, y_train1, y_test1)
+# mlp(X_train2, X_test2, y_train2, y_test2)
 #regressn(X_train1, X_test1, y_train1, y_test1)
-'''
+
+
 #simplesvm(X_train1, X_test1, y_train1, y_test1)
 #simplesvm(X_train2, X_test2, y_train2, y_test2)
 #mytree(X_train2, X_test2, y_train2, y_test2,tuningtree())
